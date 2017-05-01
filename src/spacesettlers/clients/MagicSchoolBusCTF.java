@@ -76,14 +76,15 @@ public class MagicSchoolBusCTF extends TeamClient {
 				Ship ship = (Ship) actionable;
 
 				AbstractAction action;
-
+				AbstractAction current = ship.getCurrentAction();
+				
 				if (flagShip != null && ship.equals(flagShip)) {
 					if (flagShip.isCarryingFlag()) {
 						
 						//A*
 						//check if current action is null
-						AbstractAction current = ship.getCurrentAction();
-						if (current == null || space.getCurrentTimestep() %100 == 0) {
+						
+						if (current == null || space.getCurrentTimestep() % 100 == 0) {
 							//System.out.println("We have a flag carrier!");
 							Base base = findNearestBase(space, ship);
 							//System.out.println("Flag ship before computing action: " + flagShip);
@@ -100,10 +101,16 @@ public class MagicSchoolBusCTF extends TeamClient {
 						
 						
 					} else {
-						Flag enemyFlag = getEnemyFlag(space);
-						action = getAStarPathToGoal(space, ship, enemyFlag.getPosition());
 //						action = new MoveToObjectAction(space, ship.getPosition(), enemyFlag,
 //								enemyFlag.getPosition().getTranslationalVelocity());
+						if (current == null || space.getCurrentTimestep() % 100 == 0) {
+							Flag enemyFlag = getEnemyFlag(space);
+							action = getAStarPathToGoal(space, ship, enemyFlag.getPosition());
+						}else{
+							action = current;
+						}
+						
+						
 					}
 				} else {
 					action = getAsteroidCollectorAction(space, ship);
