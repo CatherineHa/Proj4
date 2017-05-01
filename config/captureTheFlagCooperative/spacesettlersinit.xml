@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <TeamClientConfig>
 	<!-- The name of the client class (this is used to construct the client so it needs to be the full class name) -->
-	<classname>spacesettlers.clients.PacifistFlagCollectorTeamClient</classname>
+	<classname>spacesettlers.clients.MagicSchoolBusCTF</classname>
 	
 	<!-- You can choose the color your team's ships will be on the screen.  Specify the red, green, and blue components -->
-	<teamColorRed>100</teamColorRed>
-	<teamColorGreen>50</teamColorGreen>
-	<teamColorBlue>100</teamColorBlue>
+	<teamColorRed>57</teamColorRed>
+	<teamColorGreen>255</teamColorGreen>
+	<teamColorBlue>20</teamColorBlue>
 	
 	<!-- The name that shows up in the ladder -->
 	<ladderName>LandonandCatherinesMagicSchoolBus</ladderName>

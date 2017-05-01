@@ -37,7 +37,7 @@
 		</HighLevelTeamConfig>
 		<HighLevelTeamConfig>
 			<teamName>Team2</teamName>
-			<configFile>LandonandCatMagicSchoolBus.xml</configFile>
+			<configFile>spacesettlersinit.xml</configFile>
 		</HighLevelTeamConfig>		
 	</teams>
 
