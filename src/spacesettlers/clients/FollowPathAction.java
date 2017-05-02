@@ -59,8 +59,17 @@ public class FollowPathAction {
 				//System.out.println("Done!");
 				DoNothingAction doNothing = new DoNothingAction();
 				lastCommand = doNothing;
-			} else {
-				MoveAction command = new MoveAction(state, ship.getPosition(), path[currentVertex].getPosition());
+			} 
+			else if(currentVertex == path.length -1 || 
+					state.findShortestDistance(ship.getPosition(),path[currentVertex].getPosition()) < 50){
+				MoveActionSlow command = new MoveActionSlow(state, ship.getPosition(), path[currentVertex].getPosition());
+				//AbstractAction command = new MyFasterMoveAction(state, ship.getPosition(), path[currentVertex].getPosition());
+				lastCommand = command;
+
+			}
+			else {
+//				MoveAction command = new MoveAction(state, ship.getPosition(), path[currentVertex].getPosition());
+				MoveActionD command = new MoveActionD(state, ship.getPosition(), path[currentVertex].getPosition(), null);
 				//AbstractAction command = new MyFasterMoveAction(state, ship.getPosition(), path[currentVertex].getPosition());
 				lastCommand = command;
 			}

@@ -52,6 +52,7 @@ public class MagicSchoolBusCTF extends TeamClient {
 	FollowPathAction followPathAction;
 	HashMap <UUID, Graph> graphByShip;
 	int currentSteps;
+	int updateInterval = 50;
 	
 	/**
 	 * Assigns ships to asteroids and beacons, as described above
@@ -84,7 +85,7 @@ public class MagicSchoolBusCTF extends TeamClient {
 						//A*
 						//check if current action is null
 						
-						if (current == null || space.getCurrentTimestep() % 100 == 0) {
+						if (current == null || space.getCurrentTimestep() % updateInterval == 0) {
 							//System.out.println("We have a flag carrier!");
 							Base base = findNearestBase(space, ship);
 							//System.out.println("Flag ship before computing action: " + flagShip);
@@ -103,7 +104,7 @@ public class MagicSchoolBusCTF extends TeamClient {
 					} else {
 //						action = new MoveToObjectAction(space, ship.getPosition(), enemyFlag,
 //								enemyFlag.getPosition().getTranslationalVelocity());
-						if (current == null || space.getCurrentTimestep() % 100 == 0) {
+						if (current == null || space.getCurrentTimestep() % updateInterval == 0) {
 							Flag enemyFlag = getEnemyFlag(space);
 							action = getAStarPathToGoal(space, ship, enemyFlag.getPosition());
 						}else{
@@ -113,7 +114,12 @@ public class MagicSchoolBusCTF extends TeamClient {
 						
 					}
 				} else {
-					action = getAsteroidCollectorAction(space, ship);
+					if (current == null || space.getCurrentTimestep() % updateInterval == 0) {
+						action =  getAsteroidCollectorAction(space, ship);
+					}else{
+						action = current;
+					}
+//					action = getAsteroidCollectorAction(space, ship);
 				}
 
 				// save the action for this ship
@@ -391,6 +397,47 @@ public class MagicSchoolBusCTF extends TeamClient {
 				graphics.addAll(graph.getSolutionPathGraphics());
 			}
 		}
+		
+		Position points[] = new Position[30];
+		
+		//edges
+		points[0] = new Position(1400, 100);
+		points[1] = new Position(1400, 425);
+		points[2] = new Position(1400, 650);
+		points[3] = new Position(1400, 950);
+		points[4] = new Position(200, 100);
+		points[5] = new Position(200, 425);
+		points[6] = new Position(200, 650);
+		points[7] = new Position(200, 950);
+		
+		//mid 
+		points[8] = new Position(800, 150);
+		points[9] = new Position(800, 950);
+		
+		
+		//bunkers
+		points[10] = new Position(1360, 800);
+		points[11] = new Position(1360, 250);
+		points[12] = new Position(1000, 800);
+		points[13] = new Position(1000, 250);
+		points[14] = new Position(240, 800);
+		points[15] = new Position(240, 250);
+		points[16] = new Position(600, 800);
+		points[17] = new Position(600, 250);
+		
+		//equator
+		points[18] = new Position(1200, 550);
+		points[19] = new Position(400, 550);
+		
+		
+		for(Position p : points){
+			if(p != null){
+				graphics.add(new StarGraphics(3, super.teamColor, p));	
+			}
+			
+		}
+		
+		
 		HashSet<SpacewarGraphics> newGraphicsClone = (HashSet<SpacewarGraphics>) graphics.clone();
 		graphics.clear();
 		return newGraphicsClone;
