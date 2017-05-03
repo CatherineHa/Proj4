@@ -55,15 +55,25 @@ public class MagicSchoolBusCTF extends TeamClient {
 	HashSet<Ship> flagCollectors;
 	HashSet<Ship> resourceCollectors;
 	
+	HashSet<Ship> topCampers;
+	HashSet<Ship> bottomCampers;
+	int camperRadius = 80;
+	
 	//for how often you want to replan
-	int updateInterval = 50;
+	int updateInterval = 25;
 	
 	//indicates the current phase in the master plan
 	int phase = 0;
+	
+	// Master plan phases
 	public static final int BUILDING_PHASE = 0;
 	public static final int AGGRESSIVE_PHASE = 0;
 	public static final int FINAL_JUSTICE_PHASE = 0;
 	
+	boolean readyToBuildBase = false;
+	boolean baseBuilderReady = false;
+	Position basePositions[]; 
+	int baseIndex = 0;
 	
 	/**
 	 * Assigns ships to asteroids and beacons, as described above
@@ -71,8 +81,11 @@ public class MagicSchoolBusCTF extends TeamClient {
 	public Map<UUID, AbstractAction> getMovementStart(Toroidal2DPhysics space,
 			Set<AbstractActionableObject> actionableObjects) {
 		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
-		Ship flagShip;
-
+		Ship flagShip = getFlagCarrier(space, actionableObjects);
+		
+		//update what stage of the master plan the client is on
+		evaluatePhase();
+		
 		// loop through each ship and assign it to either get energy (if needed for health) or
 		// resources (as long as it isn't the flagShip)
 		for (AbstractObject actionable :  actionableObjects) {
@@ -83,21 +96,17 @@ public class MagicSchoolBusCTF extends TeamClient {
 				AbstractAction current = ship.getCurrentAction();
 				
 				//Phase 1: building phase, focus on buidling bases and ships
-				if(phase >= 0) {
-					//assign roles to the ships
-					if(resourceCollectors.size() <2){
-						resourceCollectors.add(ship);
-					}else if(!flagCollectors.contains(ship) && !resourceCollectors.contains(ship) ){
-						flagCollectors.add(ship);
-					}
+				if(phase == BUILDING_PHASE) {
+					assignShipRole(ship);
 					
 					
-					if (flagCollectors.contains(ship)) {
+					if (flagCollectors.contains(ship) || ship.equals(flagShip)) {
 						action = getFlagCollectorAction(space, actionableObjects, ship);
 						
 					} else {
 						if (current == null || space.getCurrentTimestep() % updateInterval == 0) {
-							action =  getAsteroidCollectorAction(space, ship);
+							//action =  getAsteroidCollectorAction(space, ship);
+							action = getResourceCollectorAction(space, ship);
 						}else{
 							action = current;
 						}
@@ -107,9 +116,28 @@ public class MagicSchoolBusCTF extends TeamClient {
 					// save the action for this ship
 					actions.put(ship.getId(), action);
 				}else if(phase == AGGRESSIVE_PHASE){
-					//todo
+				
+					assignShipRole(ship);
+					
+					
+					if(flagCollectors.contains(ship) || ship.equals(flagShip)){
+						action = getFlagCollectorAction(space, actionableObjects, ship);
+					}else if(topCampers.contains(ship) || bottomCampers.contains(ship)){
+						action = getFlagCamperAction(space, actionableObjects, ship);
+					}else{
+						if (current == null || space.getCurrentTimestep() % updateInterval == 0) {
+							action = getResourceCollectorAction(space, ship);
+						}else{
+							action = current;
+						}
+					}
+
+					// save the action for this ship
+					actions.put(ship.getId(), action);
 				}else if(phase == FINAL_JUSTICE_PHASE){
 					//todo
+					// save the action for this ship
+					actions.put(ship.getId(), action);
 				}
 				
 				
@@ -366,7 +394,16 @@ public class MagicSchoolBusCTF extends TeamClient {
 		graphByShip = new HashMap<UUID, Graph>();
 		flagCollectors = new HashSet<Ship>();
 		resourceCollectors = new HashSet<Ship>();
+		topCampers = new HashSet<Ship>();
+		bottomCampers = new HashSet<Ship>();
 		
+		
+		//desired future bases
+		basePositions = new Position[2];
+		basePositions[0] = new Position(240, 800);
+		basePositions[1] = new Position(240, 250);
+		
+
 		//set first phase to building phase
 		phase = BUILDING_PHASE;
 		
@@ -409,13 +446,16 @@ public class MagicSchoolBusCTF extends TeamClient {
 		points[9] = new Position(800, 950);
 		
 		
-		//bunkers
+		
+		// right bunkers
 		points[10] = new Position(1360, 800);
 		points[11] = new Position(1360, 250);
-		points[12] = new Position(1000, 800);
-		points[13] = new Position(1000, 250);
-		points[14] = new Position(240, 800);
-		points[15] = new Position(240, 250);
+		points[12] = new Position(1000, 800);//inner
+		points[13] = new Position(1000, 250);//inner
+		
+		//left bunkers
+		points[14] = new Position(240, 800);//inner
+		points[15] = new Position(240, 250);//inner
 		points[16] = new Position(600, 800);
 		points[17] = new Position(600, 250);
 		
@@ -468,6 +508,7 @@ public class MagicSchoolBusCTF extends TeamClient {
 					Ship ship = (Ship) actionableObject;
 					Set<Base> bases = space.getBases();
 
+					
 					// how far away is this ship to a base of my team?
 					boolean buyBase = true;
 					numBases = 0;
@@ -480,18 +521,28 @@ public class MagicSchoolBusCTF extends TeamClient {
 							}
 						}
 					}
-					if (buyBase && numBases < numShips) {
-						purchases.put(ship.getId(), PurchaseTypes.BASE);
-						bought_base = true;
-						System.out.println("Magic School Bus is buying a base!");
-						break;
+					if (buyBase && numBases < 3) {
+						
+						readyToBuildBase = true;
+						
+						if(baseBuilderReady && withinBasePosition(space, ship.getPosition())){
+							purchases.put(ship.getId(), PurchaseTypes.BASE);
+							bought_base = true;
+							System.out.println("Magic School Bus is buying a base!");
+							
+							readyToBuildBase = false;
+							baseBuilderReady = false;
+							baseIndex++;
+							break;
+						}
+						
 					}
 				}
 			}		
 		} 
 		
 		// can I buy a ship?
-		if (purchaseCosts.canAfford(PurchaseTypes.SHIP, resourcesAvailable) && bought_base == false) {
+		if (purchaseCosts.canAfford(PurchaseTypes.SHIP, resourcesAvailable) && bought_base == false && readyToBuildBase == false) {
 			for (AbstractActionableObject actionableObject : actionableObjects) {
 				if (actionableObject instanceof Base) {
 					Base base = (Base) actionableObject;
@@ -542,6 +593,35 @@ public class MagicSchoolBusCTF extends TeamClient {
 		graphByShip.put(ship.getId(), graph);
 		return newAction;
 	}
+	
+	
+	private void assignShipRole(Ship ship){
+		if(phase == BUILDING_PHASE){
+			//assign roles to the ships
+			if(resourceCollectors.size() <2){
+				resourceCollectors.add(ship);
+			}else if(!flagCollectors.contains(ship) && !resourceCollectors.contains(ship)){
+				flagCollectors.add(ship);
+			}
+		}else if(phase == AGGRESSIVE_PHASE){
+			//sort ships into their different roles
+			if(topCampers.isEmpty()){ //one top camper
+				System.out.println("////// ENETRING AGGRESSIVE PHASE ///////");
+				topCampers.add(ship);
+			}else if(bottomCampers.size() < topCampers.size() && !topCampers.contains(ship)){ //one bottom camper
+				bottomCampers.add(ship);
+			}else if(resourceCollectors.size() < 2 && !resourceCollectors.contains(ship) &&
+					!topCampers.contains(ship) && !bottomCampers.contains(ship)){
+				resourceCollectors.add(ship);
+			}else if(!flagCollectors.contains(ship)){
+				flagCollectors.add(ship);
+			}
+		}else{
+			//todo 
+		}
+	}
+	
+	
 
 	/*
 	 * This method encapsulates the descion making process for a flag collector and makes sure
@@ -595,6 +675,10 @@ public class MagicSchoolBusCTF extends TeamClient {
 					action = getAStarPathToGoal(space, ship, holdingSpot);
 					return action;
 				}
+			else if(getFlagCarrier(space, actionableObjects) != null && phase != BUILDING_PHASE){
+				action = new DoNothingAction();
+				return action;
+			}
 			}else{// enemy flag available, go get it
 //				action = new MoveToObjectAction(space, ship.getPosition(), enemyFlag,
 //				enemyFlag.getPosition().getTranslationalVelocity());
@@ -610,6 +694,8 @@ public class MagicSchoolBusCTF extends TeamClient {
 		return action;
 	}
 	
+	
+	
 	/*
 	 * This method encapulates the decision and plan making logic of a resource collector ship
 	 */
@@ -622,14 +708,109 @@ public class MagicSchoolBusCTF extends TeamClient {
 		
 		
 		if (current == null || space.getCurrentTimestep() % updateInterval == 0) {
-			action =  getAsteroidCollectorAction(space, ship);
+			if(readyToBuildBase){ //if we are ready to build a new base, position ship nearby desired location
+				if(withinBasePosition(space, ship.getPosition())){
+					baseBuilderReady = true;
+					action = new DoNothingAction();
+					return action;
+				}else{
+					action = getAStarPathToGoal(space, ship, basePositions[baseIndex]);
+				}
+				
+			}else{ //gather resources
+				action =  getAsteroidCollectorAction(space, ship);
+				return action;
+			}
+			
 		}else{
 			action = current;
 		}
 		
 		return action;
 	}
-
+	
+	/*
+	 * This method lays out the decision tree of the flag camping strategy plan.
+	 */
+	private AbstractAction getFlagCamperAction(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects, Ship ship){
+		
+		AbstractAction action;
+		AbstractAction current = ship.getCurrentAction();
+		Flag enemyFlag = getEnemyFlag(space);
+		
+		Position top = new Position(1000, 800);//inner
+		Position bottom = new Position(1000, 250);//inner
+		
+		if(current == null || space.getCurrentTimestep() % updateInterval == 0){
+			
+			//check if the flag has spawned inside your radius
+			if(space.findShortestDistance(ship.getPosition(), enemyFlag.getPosition()) < camperRadius){
+				//if its inside our camper radius, go after it
+				action = getFlagCollectorAction(space, actionableObjects, ship);
+				return action;
+			}else{
+				//if not inside our radius, make sure ship is inside camping zone
+				if(topCampers.contains(ship) ){
+					//if a top camper, make sure ship is either in camping zone or moving to it
+					if(space.findShortestDistance(ship.getPosition(), top) < camperRadius){
+						action = getAStarPathToGoal(space, ship, top);
+					}else{
+						action = new DoNothingAction(); //sit tight for next flag
+					}
+					return action;
+					
+				}else if(bottomCampers.contains(ship)){
+					//if a top camper, make sure ship is either in camping zone or moving to it
+					if(space.findShortestDistance(ship.getPosition(), bottom) < camperRadius){
+						action = getAStarPathToGoal(space, ship, bottom);
+					}else{
+						action = new DoNothingAction(); //sit tight for next flag
+					}
+					return action;
+				}
+			}
+		}
+		else{
+			action = current;
+		}
+		action = current;
+		return action;
+	}
+	
+	/*
+	 * This method detects if a position is within the radius of the next base to be purchased
+	 */
+	private boolean withinBasePosition(Toroidal2DPhysics space, Position p){
+		if(space.findShortestDistance(p, basePositions[baseIndex]) < 20){
+			return true;
+		}
+		return false;
+	}
+	
+	/*
+	 * This method evaluates which phase of the plan the client is currently in
+	 */
+	private int evaluatePhase(){
+		int numShips = resourceCollectors.size() + flagCollectors.size();
+		if(numShips> 6){
+			phase = FINAL_JUSTICE_PHASE;
+			flagCollectors.clear();
+			resourceCollectors.clear();
+			topCampers.clear();
+			bottomCampers.clear();
+			return phase;
+		}
+		else if(baseIndex >= basePositions.length){
+			phase = AGGRESSIVE_PHASE;
+			//clear out the roles and let them be reassigned
+			flagCollectors.clear();
+			resourceCollectors.clear();
+			topCampers.clear();
+			bottomCampers.clear();
+			return phase;
+		}
+		return BUILDING_PHASE;
+	}
 	
 
 }
