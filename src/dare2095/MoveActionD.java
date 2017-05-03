@@ -1,4 +1,4 @@
-package spacesettlers.clients;
+package dare2095;
 
 import spacesettlers.actions.AbstractAction;
 import spacesettlers.objects.AbstractObject;
@@ -94,7 +94,9 @@ public class MoveActionD extends AbstractAction {
 		KvRotational = 2.53;
 		KpRotational = 1.6;
 		KvTranslational = 0.56f;
+//		KvTranslational = 0.0;
 		KpTranslational = 0.08f;
+//		KpTranslational = 0.0;
 	}
 
 	/**
@@ -136,6 +138,8 @@ public class MoveActionD extends AbstractAction {
 		KpRotational = 1.6;
 		KvTranslational = 0.56f;
 		KpTranslational = 0.08f;
+//		KvTranslational = 0.0;
+//		KpTranslational = 0.0;
 	}
 
 	/**

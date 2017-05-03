@@ -1,4 +1,4 @@
-package spacesettlers.clients;
+package dare2095;
 
 import java.util.Comparator;
 import javax.swing.tree.DefaultMutableTreeNode;

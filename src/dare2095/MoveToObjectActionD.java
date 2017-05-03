@@ -1,4 +1,4 @@
-package spacesettlers.clients;
+package dare2095;
 
 import spacesettlers.objects.AbstractObject;
 import spacesettlers.simulator.Toroidal2DPhysics;

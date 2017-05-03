@@ -1,4 +1,4 @@
-package spacesettlers.clients;
+package dare2095;
 
 
 public class SearchNode {

@@ -1,4 +1,4 @@
-package spacesettlers.clients;
+package dare2095;
 
 import spacesettlers.actions.AbstractAction;
 import spacesettlers.objects.Ship;

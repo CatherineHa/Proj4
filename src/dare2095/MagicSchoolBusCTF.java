@@ -1,4 +1,4 @@
-package spacesettlers.clients;
+package dare2095;
 
 import java.awt.Color;
 import java.io.File;
@@ -17,9 +17,11 @@ import com.thoughtworks.xstream.XStreamException;
 
 import spacesettlers.actions.AbstractAction;
 import spacesettlers.actions.DoNothingAction;
+import spacesettlers.actions.MoveAction;
 import spacesettlers.actions.MoveToObjectAction;
 import spacesettlers.actions.PurchaseCosts;
 import spacesettlers.actions.PurchaseTypes;
+import spacesettlers.clients.TeamClient;
 import spacesettlers.graphics.SpacewarGraphics;
 import spacesettlers.graphics.StarGraphics;
 import spacesettlers.objects.AbstractActionableObject;
@@ -57,7 +59,7 @@ public class MagicSchoolBusCTF extends TeamClient {
 	
 	HashSet<Ship> topCampers;
 	HashSet<Ship> bottomCampers;
-	int camperRadius = 80;
+	int camperRadius = 100;
 	
 	//for how often you want to replan
 	int updateInterval = 25;
@@ -67,13 +69,15 @@ public class MagicSchoolBusCTF extends TeamClient {
 	
 	// Master plan phases
 	public static final int BUILDING_PHASE = 0;
-	public static final int AGGRESSIVE_PHASE = 0;
-	public static final int FINAL_JUSTICE_PHASE = 0;
+	public static final int AGGRESSIVE_PHASE = 1;
+	public static final int FINAL_JUSTICE_PHASE = 2;
 	
 	boolean readyToBuildBase = false;
 	boolean baseBuilderReady = false;
 	Position basePositions[]; 
 	int baseIndex = 0;
+	
+	Position zonePositions[];	
 	
 	/**
 	 * Assigns ships to asteroids and beacons, as described above
@@ -83,8 +87,6 @@ public class MagicSchoolBusCTF extends TeamClient {
 		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
 		Ship flagShip = getFlagCarrier(space, actionableObjects);
 		
-		//update what stage of the master plan the client is on
-		evaluatePhase();
 		
 		// loop through each ship and assign it to either get energy (if needed for health) or
 		// resources (as long as it isn't the flagShip)
@@ -115,8 +117,7 @@ public class MagicSchoolBusCTF extends TeamClient {
 
 					// save the action for this ship
 					actions.put(ship.getId(), action);
-				}else if(phase == AGGRESSIVE_PHASE){
-				
+				}else if(phase == AGGRESSIVE_PHASE){	
 					assignShipRole(ship);
 					
 					
@@ -239,7 +240,7 @@ public class MagicSchoolBusCTF extends TeamClient {
 		Position currentPosition = ship.getPosition();
 
 		// aim for a beacon if there isn't enough energy
-		if (ship.getEnergy() < 2000) {
+		if (ship.getEnergy() < 1000) {
 			Beacon beacon = pickNearestBeacon(space, ship);
 			AbstractAction newAction = null;
 			// if there is no beacon, then just skip a turn
@@ -253,7 +254,7 @@ public class MagicSchoolBusCTF extends TeamClient {
 		}
 
 		// if the ship has enough resourcesAvailable, take it back to base
-		if (ship.getResources().getTotal() > 500) {
+		if (ship.getResources().getTotal() > 400) {
 			Base base = findNearestBase(space, ship);
 			AbstractAction newAction = getAStarPathToGoal(space, ship, base.getPosition());
 			aimingForBase.put(ship.getId(), true);
@@ -403,6 +404,9 @@ public class MagicSchoolBusCTF extends TeamClient {
 		basePositions[0] = new Position(240, 800);
 		basePositions[1] = new Position(240, 250);
 		
+		zonePositions = new Position[2];
+		zonePositions[0] = new Position(270, 800);
+		zonePositions[1] = new Position(270, 250);
 
 		//set first phase to building phase
 		phase = BUILDING_PHASE;
@@ -466,7 +470,7 @@ public class MagicSchoolBusCTF extends TeamClient {
 		
 		for(Position p : points){
 			if(p != null){
-				graphics.add(new StarGraphics(3, super.teamColor, p));	
+				graphics.add(new StarGraphics(3, Color.CYAN, p));	
 			}
 			
 		}
@@ -533,6 +537,8 @@ public class MagicSchoolBusCTF extends TeamClient {
 							readyToBuildBase = false;
 							baseBuilderReady = false;
 							baseIndex++;
+							//update what stage of the master plan the client is on
+							evaluatePhase();
 							break;
 						}
 						
@@ -549,6 +555,8 @@ public class MagicSchoolBusCTF extends TeamClient {
 					
 					purchases.put(base.getId(), PurchaseTypes.SHIP);
 					System.out.println("Magic School Bus is buying a ship!");
+					//update what stage of the master plan the client is on
+					evaluatePhase();
 					break;
 				}
 
@@ -608,16 +616,12 @@ public class MagicSchoolBusCTF extends TeamClient {
 			if(topCampers.isEmpty()){ //one top camper
 				System.out.println("////// ENETRING AGGRESSIVE PHASE ///////");
 				topCampers.add(ship);
-			}else if(bottomCampers.size() < topCampers.size() && !topCampers.contains(ship)){ //one bottom camper
+			}else if(bottomCampers.isEmpty() && !topCampers.contains(ship)){ //one bottom camper
 				bottomCampers.add(ship);
-			}else if(resourceCollectors.size() < 2 && !resourceCollectors.contains(ship) &&
+			}else if(!flagCollectors.contains(ship) &&
 					!topCampers.contains(ship) && !bottomCampers.contains(ship)){
-				resourceCollectors.add(ship);
-			}else if(!flagCollectors.contains(ship)){
 				flagCollectors.add(ship);
 			}
-		}else{
-			//todo 
 		}
 	}
 	
@@ -652,7 +656,7 @@ public class MagicSchoolBusCTF extends TeamClient {
 		} else { //if you dont currently have the flag, either go after the flag or wait for the next one, or gte energy
 			
 			
-			if(ship.getEnergy() < 2000) { //low on energy, get a beacon
+			if(ship.getEnergy() < 800) { //low on energy, get a beacon
 				Beacon beacon = pickNearestBeacon(space, ship);
 				// if there is no beacon, then just skip a turn
 				if (beacon == null) {
@@ -738,13 +742,13 @@ public class MagicSchoolBusCTF extends TeamClient {
 		AbstractAction current = ship.getCurrentAction();
 		Flag enemyFlag = getEnemyFlag(space);
 		
-		Position top = new Position(1000, 800);//inner
-		Position bottom = new Position(1000, 250);//inner
+		Position top = zonePositions[0];
+		Position bottom = zonePositions[1];
 		
 		if(current == null || space.getCurrentTimestep() % updateInterval == 0){
 			
 			//check if the flag has spawned inside your radius
-			if(space.findShortestDistance(ship.getPosition(), enemyFlag.getPosition()) < camperRadius){
+			if(space.findShortestDistance(ship.getPosition(), enemyFlag.getPosition()) < 2*camperRadius){
 				//if its inside our camper radius, go after it
 				action = getFlagCollectorAction(space, actionableObjects, ship);
 				return action;
@@ -753,18 +757,22 @@ public class MagicSchoolBusCTF extends TeamClient {
 				if(topCampers.contains(ship) ){
 					//if a top camper, make sure ship is either in camping zone or moving to it
 					if(space.findShortestDistance(ship.getPosition(), top) < camperRadius){
-						action = getAStarPathToGoal(space, ship, top);
+						//action = new DoNothingAction(); //sit tight for next flag
+						action = new MoveAction(space, ship.getPosition(), top);
 					}else{
-						action = new DoNothingAction(); //sit tight for next flag
+						
+						action = getAStarPathToGoal(space, ship, top);
+						
 					}
 					return action;
 					
 				}else if(bottomCampers.contains(ship)){
 					//if a top camper, make sure ship is either in camping zone or moving to it
 					if(space.findShortestDistance(ship.getPosition(), bottom) < camperRadius){
-						action = getAStarPathToGoal(space, ship, bottom);
+//						action = new DoNothingAction(); //sit tight for next flag
+						action = new MoveAction(space, ship.getPosition(), bottom);
 					}else{
-						action = new DoNothingAction(); //sit tight for next flag
+						action = getAStarPathToGoal(space, ship, bottom);
 					}
 					return action;
 				}
@@ -791,16 +799,11 @@ public class MagicSchoolBusCTF extends TeamClient {
 	 * This method evaluates which phase of the plan the client is currently in
 	 */
 	private int evaluatePhase(){
+		System.out.println("evaluating phase");
 		int numShips = resourceCollectors.size() + flagCollectors.size();
-		if(numShips> 6){
-			phase = FINAL_JUSTICE_PHASE;
-			flagCollectors.clear();
-			resourceCollectors.clear();
-			topCampers.clear();
-			bottomCampers.clear();
-			return phase;
-		}
-		else if(baseIndex >= basePositions.length){
+		if(baseIndex >= basePositions.length){
+			System.out.println("changing Phase to aggressive phase");
+			//todo make sure this case is happening
 			phase = AGGRESSIVE_PHASE;
 			//clear out the roles and let them be reassigned
 			flagCollectors.clear();
