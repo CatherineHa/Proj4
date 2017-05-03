@@ -80,39 +80,8 @@ public class MagicSchoolBusCTF extends TeamClient {
 				AbstractAction current = ship.getCurrentAction();
 				
 				if (flagShip != null && ship.equals(flagShip)) {
-					if (flagShip.isCarryingFlag()) {
-						
-						//A*
-						//check if current action is null
-						
-						if (current == null || space.getCurrentTimestep() % updateInterval == 0) {
-							//System.out.println("We have a flag carrier!");
-							Base base = findNearestBase(space, ship);
-							//System.out.println("Flag ship before computing action: " + flagShip);
-							action = getAStarPathToGoal(space, ship, base.getPosition());
-							actions.put(ship.getId(), action);
-							//System.out.println("Aiming for base with action " + action);
-							aimingForBase.put(ship.getId(), true);
-							//System.out.println("Flag ship after computing action: " + flagShip);
-						}
-						else{//movement is not complete
-							action = current;
-						}
-						
-						
-						
-					} else {
-//						action = new MoveToObjectAction(space, ship.getPosition(), enemyFlag,
-//								enemyFlag.getPosition().getTranslationalVelocity());
-						if (current == null || space.getCurrentTimestep() % updateInterval == 0) {
-							Flag enemyFlag = getEnemyFlag(space);
-							action = getAStarPathToGoal(space, ship, enemyFlag.getPosition());
-						}else{
-							action = current;
-						}
-						
-						
-					}
+					action = getFlagCollectorAction(space, actionableObjects, ship);
+					
 				} else {
 					if (current == null || space.getCurrentTimestep() % updateInterval == 0) {
 						action =  getAsteroidCollectorAction(space, ship);
@@ -489,7 +458,7 @@ public class MagicSchoolBusCTF extends TeamClient {
 					if (buyBase && numBases < numShips) {
 						purchases.put(ship.getId(), PurchaseTypes.BASE);
 						bought_base = true;
-						System.out.println("Pacifist Flag Collector is buying a base!");
+						System.out.println("Magic School Bus is buying a base!");
 						break;
 					}
 				}
@@ -503,7 +472,7 @@ public class MagicSchoolBusCTF extends TeamClient {
 					Base base = (Base) actionableObject;
 					
 					purchases.put(base.getId(), PurchaseTypes.SHIP);
-					System.out.println("Pacifist Flag Collector is buying a ship!");
+					System.out.println("Magic School Bus is buying a ship!");
 					break;
 				}
 
@@ -549,4 +518,94 @@ public class MagicSchoolBusCTF extends TeamClient {
 		return newAction;
 	}
 
+	/*
+	 * This method encapsulates the descion making process for a flag collector and makes sure
+	 * it follows the specified plan
+	 */
+	private AbstractAction getFlagCollectorAction(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects, Ship ship){
+		
+		AbstractAction action;
+		AbstractAction current = ship.getCurrentAction();
+		
+		if (ship.isCarryingFlag()) { //if ship is carrying flag, return to nearest base
+			
+			//A*
+			//check if current action is null
+			
+			if (current == null || space.getCurrentTimestep() % updateInterval == 0) {
+				//System.out.println("We have a flag carrier!");
+				Base base = findNearestBase(space, ship);
+				//System.out.println("Flag ship before computing action: " + flagShip);
+				action = getAStarPathToGoal(space, ship, base.getPosition());
+				//System.out.println("Aiming for base with action " + action);
+				aimingForBase.put(ship.getId(), true);
+				//System.out.println("Flag ship after computing action: " + flagShip);
+				return action;
+			}
+						
+			
+		} else { //if you dont currently have the flag, either go after the flag or wait for the next one, or gte energy
+			
+			
+			if(ship.getEnergy() < 2000) { //low on energy, get a beacon
+				Beacon beacon = pickNearestBeacon(space, ship);
+				// if there is no beacon, then just skip a turn
+				if (beacon == null) {
+					action = new DoNothingAction();
+					return action;
+				} else if(current == null || space.getCurrentTimestep() % updateInterval == 0) {
+					action = getAStarPathToGoal(space, ship, beacon.getPosition());
+					return action;
+				}
+				aimingForBase.put(ship.getId(), false);
+
+			}else if(getFlagCarrier(space, actionableObjects) != null){ //enemy flag is already grabbed by another ship, wait
+				Position holdingSpot = new Position(400, 550);
+				
+				if(space.findShortestDistance(ship.getPosition(), holdingSpot) < 40){ //if in a holding position
+					action = new DoNothingAction();
+					return action;
+				}
+				else if(current == null || space.getCurrentTimestep() % updateInterval == 0){ //if not at a holding position, move there
+					action = getAStarPathToGoal(space, ship, holdingSpot);
+					return action;
+				}
+			}else{// enemy flag available, go get it
+//				action = new MoveToObjectAction(space, ship.getPosition(), enemyFlag,
+//				enemyFlag.getPosition().getTranslationalVelocity());
+				if (current == null || space.getCurrentTimestep() % updateInterval == 0) {
+					Flag enemyFlag = getEnemyFlag(space);
+					action = getAStarPathToGoal(space, ship, enemyFlag.getPosition());
+					return action;
+				}
+			}
+			
+		}
+		action = current;
+		return action;
+	}
+	
+	/*
+	 * This method encapulates the decision and plan making logic of a resource collector ship
+	 */
+	private AbstractAction getResourceCollectorAction(Toroidal2DPhysics space, Ship ship){
+		
+		AbstractAction action;
+		AbstractAction current = ship.getCurrentAction();
+		
+		//go after resources except for targets of oppurtunity
+		
+		
+		if (current == null || space.getCurrentTimestep() % updateInterval == 0) {
+			action =  getAsteroidCollectorAction(space, ship);
+		}else{
+			action = current;
+		}
+		
+		return action;
+	}
+
+	
+
 }
+

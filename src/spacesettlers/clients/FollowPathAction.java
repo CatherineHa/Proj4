@@ -61,7 +61,7 @@ public class FollowPathAction {
 				lastCommand = doNothing;
 			} 
 			else if(currentVertex == path.length -1 || 
-					state.findShortestDistance(ship.getPosition(),path[currentVertex].getPosition()) < 50){
+					state.findShortestDistance(ship.getPosition(),path[currentVertex].getPosition()) < 100){
 				MoveActionSlow command = new MoveActionSlow(state, ship.getPosition(), path[currentVertex].getPosition());
 				//AbstractAction command = new MyFasterMoveAction(state, ship.getPosition(), path[currentVertex].getPosition());
 				lastCommand = command;
