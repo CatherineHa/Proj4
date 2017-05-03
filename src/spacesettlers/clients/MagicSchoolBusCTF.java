@@ -51,8 +51,19 @@ public class MagicSchoolBusCTF extends TeamClient {
 	HashMap <UUID, Boolean> aimingForBase;
 	FollowPathAction followPathAction;
 	HashMap <UUID, Graph> graphByShip;
-	int currentSteps;
+	
+	HashSet<Ship> flagCollectors;
+	HashSet<Ship> resourceCollectors;
+	
+	//for how often you want to replan
 	int updateInterval = 50;
+	
+	//indicates the current phase in the master plan
+	int phase = 0;
+	public static final int BUILDING_PHASE = 0;
+	public static final int AGGRESSIVE_PHASE = 0;
+	public static final int FINAL_JUSTICE_PHASE = 0;
+	
 	
 	/**
 	 * Assigns ships to asteroids and beacons, as described above
@@ -62,37 +73,46 @@ public class MagicSchoolBusCTF extends TeamClient {
 		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
 		Ship flagShip;
 
-		// get the flag carrier, if we have one
-		flagShip = getFlagCarrier(space, actionableObjects);
-		
-		// we don't have a ship carrying a flag, so find the best choice (if it exists)
-		if (flagShip == null) {
-			flagShip = findHealthiestShipNearFlag(space, actionableObjects);
-		}
-
 		// loop through each ship and assign it to either get energy (if needed for health) or
 		// resources (as long as it isn't the flagShip)
 		for (AbstractObject actionable :  actionableObjects) {
 			if (actionable instanceof Ship) {
 				Ship ship = (Ship) actionable;
-
-				AbstractAction action;
+				
+				AbstractAction action = new DoNothingAction();
 				AbstractAction current = ship.getCurrentAction();
 				
-				if (flagShip != null && ship.equals(flagShip)) {
-					action = getFlagCollectorAction(space, actionableObjects, ship);
-					
-				} else {
-					if (current == null || space.getCurrentTimestep() % updateInterval == 0) {
-						action =  getAsteroidCollectorAction(space, ship);
-					}else{
-						action = current;
+				//Phase 1: building phase, focus on buidling bases and ships
+				if(phase >= 0) {
+					//assign roles to the ships
+					if(resourceCollectors.size() <2){
+						resourceCollectors.add(ship);
+					}else if(!flagCollectors.contains(ship) && !resourceCollectors.contains(ship) ){
+						flagCollectors.add(ship);
 					}
-//					action = getAsteroidCollectorAction(space, ship);
-				}
+					
+					
+					if (flagCollectors.contains(ship)) {
+						action = getFlagCollectorAction(space, actionableObjects, ship);
+						
+					} else {
+						if (current == null || space.getCurrentTimestep() % updateInterval == 0) {
+							action =  getAsteroidCollectorAction(space, ship);
+						}else{
+							action = current;
+						}
+//						action = getAsteroidCollectorAction(space, ship);
+					}
 
-				// save the action for this ship
-				actions.put(ship.getId(), action);
+					// save the action for this ship
+					actions.put(ship.getId(), action);
+				}else if(phase == AGGRESSIVE_PHASE){
+					//todo
+				}else if(phase == FINAL_JUSTICE_PHASE){
+					//todo
+				}
+				
+				
 			} else {
 				// bases do nothing
 				actions.put(actionable.getId(), new DoNothingAction());
@@ -344,6 +364,11 @@ public class MagicSchoolBusCTF extends TeamClient {
 		asteroidToShipMap = new HashMap<UUID, Ship>();
 		aimingForBase = new HashMap<UUID, Boolean>();
 		graphByShip = new HashMap<UUID, Graph>();
+		flagCollectors = new HashSet<Ship>();
+		resourceCollectors = new HashSet<Ship>();
+		
+		//set first phase to building phase
+		phase = BUILDING_PHASE;
 		
 	}
 
@@ -559,7 +584,7 @@ public class MagicSchoolBusCTF extends TeamClient {
 				}
 				aimingForBase.put(ship.getId(), false);
 
-			}else if(getFlagCarrier(space, actionableObjects) != null){ //enemy flag is already grabbed by another ship, wait
+			}else if(getFlagCarrier(space, actionableObjects) != null && phase == BUILDING_PHASE){ //enemy flag is already grabbed by another ship, wait
 				Position holdingSpot = new Position(400, 550);
 				
 				if(space.findShortestDistance(ship.getPosition(), holdingSpot) < 40){ //if in a holding position

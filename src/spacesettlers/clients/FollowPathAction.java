@@ -19,6 +19,8 @@ public class FollowPathAction {
 	boolean finishedShortAction;
 	AbstractAction lastCommand;
 
+	
+
 	public FollowPathAction() {
 		path = null;
 		currentVertex = -1;
