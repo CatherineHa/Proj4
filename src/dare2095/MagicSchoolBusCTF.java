@@ -1,9 +1,6 @@
 package dare2095;
 
-import java.awt.Color;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,18 +9,15 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
-import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.XStreamException;
 
 import spacesettlers.actions.AbstractAction;
 import spacesettlers.actions.DoNothingAction;
 import spacesettlers.actions.MoveAction;
-import spacesettlers.actions.MoveToObjectAction;
 import spacesettlers.actions.PurchaseCosts;
 import spacesettlers.actions.PurchaseTypes;
 import spacesettlers.clients.TeamClient;
 import spacesettlers.graphics.SpacewarGraphics;
-import spacesettlers.graphics.StarGraphics;
+
 import spacesettlers.objects.AbstractActionableObject;
 import spacesettlers.objects.AbstractObject;
 import spacesettlers.objects.Asteroid;
@@ -70,13 +64,14 @@ public class MagicSchoolBusCTF extends TeamClient {
 	// Master plan phases
 	public static final int BUILDING_PHASE = 0;
 	public static final int AGGRESSIVE_PHASE = 1;
-	public static final int FINAL_JUSTICE_PHASE = 2;
 	
+	//Used to keep track of base building planning actions
 	boolean readyToBuildBase = false;
 	boolean baseBuilderReady = false;
 	Position basePositions[]; 
 	int baseIndex = 0;
 	
+	//used for flag camping zones	
 	Position zonePositions[];	
 	
 	/**
@@ -120,13 +115,13 @@ public class MagicSchoolBusCTF extends TeamClient {
 				}else if(phase == AGGRESSIVE_PHASE){	
 					assignShipRole(ship);
 					
-					
+					//if its a flag collector, go after the flag
 					if(flagCollectors.contains(ship) || ship.equals(flagShip)){
 						action = getFlagCollectorAction(space, actionableObjects, ship);
-					}else if(topCampers.contains(ship) || bottomCampers.contains(ship)){
+					}else if(topCampers.contains(ship) || bottomCampers.contains(ship)){ //else its a camper 
 						action = getFlagCamperAction(space, actionableObjects, ship);
 					}else{
-						if (current == null || space.getCurrentTimestep() % updateInterval == 0) {
+						if (current == null || space.getCurrentTimestep() % updateInterval == 0) { //or a resource collector
 							action = getResourceCollectorAction(space, ship);
 						}else{
 							action = current;
@@ -135,12 +130,7 @@ public class MagicSchoolBusCTF extends TeamClient {
 
 					// save the action for this ship
 					actions.put(ship.getId(), action);
-				}else if(phase == FINAL_JUSTICE_PHASE){
-					//todo
-					// save the action for this ship
-					actions.put(ship.getId(), action);
 				}
-				
 				
 			} else {
 				// bases do nothing
@@ -190,45 +180,6 @@ public class MagicSchoolBusCTF extends TeamClient {
 	
 	
 	/**
-	 * Finds the ship with the highest health and nearest the flag
-	 * 
-	 * @param space
-	 * @param actionableObjects
-	 * @return
-	 */
-	private Ship findHealthiestShipNearFlag(Toroidal2DPhysics space,
-			Set<AbstractActionableObject> actionableObjects) {
-		double minDistance = Double.MAX_VALUE;
-		double maxHealth = Double.MIN_VALUE;
-		int minHealth = 2000;
-		Ship bestShip = null;
-
-		// first find the enemy flag
-		Flag enemyFlag = getEnemyFlag(space);
-
-		// now find the healthiest ship that has at least the required minimum energy 
-		// if no ships meet that criteria, return null
-		for (AbstractObject actionable :  actionableObjects) {
-			if (actionable instanceof Ship) {
-				Ship ship = (Ship) actionable;
-				
-				double dist = space.findShortestDistance(ship.getPosition(), enemyFlag.getPosition());
-				if (dist < minDistance && ship.getEnergy() > minHealth) {
-					if (ship.getEnergy() > maxHealth) {
-						minDistance = dist;
-						maxHealth = ship.getEnergy();
-						bestShip = ship;
-					}
-				}
-			}
-		}
-		
-		return bestShip;
-		
-	}
-	
-	
-	/**
 	 * Gets the action for the asteroid collecting ship
 	 * @param space
 	 * @param ship
@@ -237,8 +188,6 @@ public class MagicSchoolBusCTF extends TeamClient {
 	private AbstractAction getAsteroidCollectorAction(Toroidal2DPhysics space,
 			Ship ship) {
 		AbstractAction current = ship.getCurrentAction();
-		Position currentPosition = ship.getPosition();
-
 		// aim for a beacon if there isn't enough energy
 		if (ship.getEnergy() < 1000) {
 			Beacon beacon = pickNearestBeacon(space, ship);
@@ -399,11 +348,12 @@ public class MagicSchoolBusCTF extends TeamClient {
 		bottomCampers = new HashSet<Ship>();
 		
 		
-		//desired future bases
+		//desired future base locations
 		basePositions = new Position[2];
 		basePositions[0] = new Position(240, 800);
 		basePositions[1] = new Position(240, 250);
 		
+		//desired future camping locations
 		zonePositions = new Position[2];
 		zonePositions[0] = new Position(270, 800);
 		zonePositions[1] = new Position(270, 250);
@@ -432,53 +382,51 @@ public class MagicSchoolBusCTF extends TeamClient {
 				graphics.addAll(graph.getSolutionPathGraphics());
 			}
 		}
-		
-		Position points[] = new Position[30];
-		
-		//edges
-		points[0] = new Position(1400, 100);
-		points[1] = new Position(1400, 425);
-		points[2] = new Position(1400, 650);
-		points[3] = new Position(1400, 950);
-		points[4] = new Position(200, 100);
-		points[5] = new Position(200, 425);
-		points[6] = new Position(200, 650);
-		points[7] = new Position(200, 950);
-		
-		//mid 
-		points[8] = new Position(800, 150);
-		points[9] = new Position(800, 950);
-		
-		
-		
-		// right bunkers
-		points[10] = new Position(1360, 800);
-		points[11] = new Position(1360, 250);
-		points[12] = new Position(1000, 800);//inner
-		points[13] = new Position(1000, 250);//inner
-		
-		//left bunkers
-		points[14] = new Position(240, 800);//inner
-		points[15] = new Position(240, 250);//inner
-		points[16] = new Position(600, 800);
-		points[17] = new Position(600, 250);
-		
-		//equator
-		points[18] = new Position(1200, 550);
-		points[19] = new Position(400, 550);
-		
-		
-		for(Position p : points){
-			if(p != null){
-				graphics.add(new StarGraphics(3, Color.CYAN, p));	
-			}
-			
-		}
-		
-		
-		HashSet<SpacewarGraphics> newGraphicsClone = (HashSet<SpacewarGraphics>) graphics.clone();
-		graphics.clear();
-		return newGraphicsClone;
+//		
+//		Position points[] = new Position[30];
+//		
+//		//edges
+//		points[0] = new Position(1400, 100);
+//		points[1] = new Position(1400, 425);
+//		points[2] = new Position(1400, 650);
+//		points[3] = new Position(1400, 950);
+//		points[4] = new Position(200, 100);
+//		points[5] = new Position(200, 425);
+//		points[6] = new Position(200, 650);
+//		points[7] = new Position(200, 950);
+//		
+//		//mid 
+//		points[8] = new Position(800, 150);
+//		points[9] = new Position(800, 950);
+//		
+//		
+//		
+//		// right bunkers
+//		points[10] = new Position(1360, 800);
+//		points[11] = new Position(1360, 250);
+//		points[12] = new Position(1000, 800);//inner
+//		points[13] = new Position(1000, 250);//inner
+//		
+//		//left bunkers
+//		points[14] = new Position(240, 800);//inner
+//		points[15] = new Position(240, 250);//inner
+//		points[16] = new Position(600, 800);
+//		points[17] = new Position(600, 250);
+//		
+//		//equator
+//		points[18] = new Position(1200, 550);
+//		points[19] = new Position(400, 550);
+//		
+//		
+//		for(Position p : points){
+//			if(p != null){
+//				graphics.add(new StarGraphics(3, Color.CYAN, p));	
+//			}
+//			
+//		}
+//		
+	
+		return graphics;
 	}
 
 	@Override
@@ -494,13 +442,10 @@ public class MagicSchoolBusCTF extends TeamClient {
 		HashMap<UUID, PurchaseTypes> purchases = new HashMap<UUID, PurchaseTypes>();
 		double BASE_BUYING_DISTANCE = 200;
 		boolean bought_base = false;
-		int numBases, numShips;
+		int numBases;
 
-		// count the number of ships for the base/ship buying algorithm
-		numShips = 0;
 		for (AbstractActionableObject actionableObject : actionableObjects) {
 			if (actionableObject instanceof Ship) {
-				numShips++;
 			}
 		}
 		
@@ -602,7 +547,11 @@ public class MagicSchoolBusCTF extends TeamClient {
 		return newAction;
 	}
 	
-	
+	/*
+	 * This method takes in a ship and looks at current role assignements in order to give 
+	 * it a job. It assigns roles based on the master plan phase, and seeks specific distributions
+	 * of ships for each role.
+	 */
 	private void assignShipRole(Ship ship){
 		if(phase == BUILDING_PHASE){
 			//assign roles to the ships
@@ -629,7 +578,8 @@ public class MagicSchoolBusCTF extends TeamClient {
 
 	/*
 	 * This method encapsulates the descion making process for a flag collector and makes sure
-	 * it follows the specified plan
+	 * it follows the specified plan. The preconditions of the action are checked through the 
+	 * if statements which act like a desicion tree. The effects are the resulting assignments.
 	 */
 	private AbstractAction getFlagCollectorAction(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects, Ship ship){
 		
@@ -702,15 +652,16 @@ public class MagicSchoolBusCTF extends TeamClient {
 	
 	/*
 	 * This method encapulates the decision and plan making logic of a resource collector ship
+	 * The preconditions of the action are checked through the if statements which act like 
+	 * a desicion tree. The effects are the resulting assignments. The ships goals are to gain as 
+	 * many resources as it can
 	 */
 	private AbstractAction getResourceCollectorAction(Toroidal2DPhysics space, Ship ship){
 		
 		AbstractAction action;
 		AbstractAction current = ship.getCurrentAction();
 		
-		//go after resources except for targets of oppurtunity
-		
-		
+		//in general, go after resources with already in place logic, update with planning update interval
 		if (current == null || space.getCurrentTimestep() % updateInterval == 0) {
 			if(readyToBuildBase){ //if we are ready to build a new base, position ship nearby desired location
 				if(withinBasePosition(space, ship.getPosition())){
@@ -734,7 +685,9 @@ public class MagicSchoolBusCTF extends TeamClient {
 	}
 	
 	/*
-	 * This method lays out the decision tree of the flag camping strategy plan.
+	 * This method lays out the decision tree of the flag camping strategy plan. The tree ensure that preconditions
+	 * are met before an action can be taken, and an appropriate action is decided. The effects are the results
+	 * of the assignments in the logic.
 	 */
 	private AbstractAction getFlagCamperAction(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects, Ship ship){
 		
@@ -796,11 +749,11 @@ public class MagicSchoolBusCTF extends TeamClient {
 	}
 	
 	/*
-	 * This method evaluates which phase of the plan the client is currently in
+	 * This method evaluates which phase of the plan the client is currently in.
+	 * It is called after major events to check the status of the master plan
 	 */
 	private int evaluatePhase(){
 		System.out.println("evaluating phase");
-		int numShips = resourceCollectors.size() + flagCollectors.size();
 		if(baseIndex >= basePositions.length){
 			System.out.println("changing Phase to aggressive phase");
 			//todo make sure this case is happening
